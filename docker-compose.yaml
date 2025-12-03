@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  neo4j:
+    image: neo4j:5
+    container_name: galapagos-neo4j
+    environment:
+      - NEO4J_AUTH=neo4j/test
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+
+  mongo:
+    image: mongo:6
+    container_name: galapagos-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    container_name: galapagos-backend
+    ports:
+      - "4000:4000"
+    depends_on:
+      - neo4j
+      - mongo
+    volumes:
+      - ./backend:/app
+    command: ["npm", "run", "dev"]
+
+volumes:
+  neo4j_data:
+  mongo_data:
