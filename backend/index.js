@@ -1,4 +1,5 @@
 import { ApolloServer, gql } from "apollo-server";
+import { connectMongo } from "./mongo.js";
 
 const typeDefs = gql`
   type Query {
@@ -17,3 +18,5 @@ const server = new ApolloServer({ typeDefs, resolvers });
 server.listen({ port: 4000, host: '0.0.0.0' }).then(({ url }) => {
   console.log(`GraphQL prêt à ${url}`);
 });
+
+await connectMongo();
