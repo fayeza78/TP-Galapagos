@@ -1,28 +1,22 @@
 import { ApolloServer, gql } from "apollo-server";
 import { connectMongo } from "./mongo.js";
 import { getSession } from "./neo4j.js";
+import { typeDefs } from "./typeDefs.js";
+import { resolvers } from "./resolvers.js";
+import { initNeo4jData } from "./neo4jData.js";
 
-await connectMongo();
+async function startServer() {
+    try {
+        await connectMongo();
+        await initNeo4jData();
 
-const typeDefs = gql`
-  type Query {
-    hello: String!
-  }
-`;
 
-const resolvers = {
-  Query: {
-    hello: () => "Bienvenue dans Galapagos GraphQL !",
-  },
-};
+        const server = new ApolloServer({ typeDefs, resolvers });
 
-const server = new ApolloServer({ typeDefs, resolvers });
-
-server.listen({ port: 4000, host: '0.0.0.0' }).then(({ url }) => {
-  console.log(`GraphQL prêt à ${url}`);
-});
-
-const session = getSession();
-const result = await session.run("RETURN 'Neo4j fonctionne' AS message");
-console.log(result.records[0].get("message"));
-await session.close();
+        const { url } = await server.listen({ port: 4000, host: '0.0.0.0' });
+        console.log(`GraphQL prêt à ${url}`);
+        }catch (error) {
+        console.error("Erreur lors du démarrage du serveur :", error);
+    }
+}
+startServer();
