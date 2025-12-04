@@ -5,7 +5,7 @@ services:
     image: neo4j:5
     container_name: galapagos-neo4j
     environment:
-      - NEO4J_AUTH=neo4j/test
+      - NEO4J_AUTH=neo4j/Fayeza123!
     ports:
       - "7474:7474"
       - "7687:7687"
@@ -30,7 +30,7 @@ services:
       - mongo
     volumes:
       - ./backend:/app
-    command: ["npm", "run", "dev"]
+    command: ["npm", "start"]
 
 volumes:
   neo4j_data:
