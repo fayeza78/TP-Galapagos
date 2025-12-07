@@ -22,6 +22,7 @@ type Commande {
   products: [ProduitInCommande!]!
   statut: String
   dateCommande: String
+  livraisons: [Livraison!]
 }
 
 type ProduitInCommande {
@@ -42,7 +43,7 @@ type Mutation {
   addProduit(name: String!, description: String, price: Float, stock: Int): Produit!
   addCommande(clientId: ID!, products: [ProduitInCommandeInput!]!): Commande!
   addTrajet(hydravionId: ID!, depart: String!, arrivee: String!): Trajet!
-  addLivraison(commandeId: ID!, trajetId: ID!, dockerId: ID, dateEstimee: String): Livraison!
+  addLivraison(commandeId: ID!, hydravionId: ID!, dockerId: ID, dateEstimee: String): Livraison!
 }
 
 input ProduitInCommandeInput {
@@ -54,6 +55,8 @@ type Hydravion {
   modele: String!
   capacite: Int
   consommation: Int
+  statut: String! 
+  portActuel: Port 
 }
 
 type Port {
@@ -92,6 +95,18 @@ type Docker {
   disponible: Boolean!
 }
 
+type CheminEtape {
+  portId: ID!
+  nom: String!
+  kmToNext: Float
+}
+
+type Chemin {
+  distanceKm: Float!
+  dureeMinutes: Float!
+  etapes: [CheminEtape!]!
+}
+
 extend type Query {
   hydravions: [Hydravion!]!
   ports: [Port!]!
@@ -99,6 +114,8 @@ extend type Query {
   trajets: [Trajet!]!
   livraisons: [Livraison!]!   
   dockers: [Docker!]!
+  shortestPath(depart: ID!, arrivee: ID!): Chemin
+  clientHistory(clientId: ID!): [Commande!]!
 }
 `;
 

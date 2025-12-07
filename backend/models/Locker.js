@@ -5,3 +5,5 @@ const lockerSchema = new mongoose.Schema({
   capacity: Number,
   isAvailable: { type: Boolean, default: true },
 });
+
+export const Locker = mongoose.model("Locker", lockerSchema);
