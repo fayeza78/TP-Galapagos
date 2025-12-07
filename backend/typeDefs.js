@@ -41,6 +41,8 @@ type Mutation {
   addClient(name: String!, type: String, email: String): Client!
   addProduit(name: String!, description: String, price: Float, stock: Int): Produit!
   addCommande(clientId: ID!, products: [ProduitInCommandeInput!]!): Commande!
+  addTrajet(hydravionId: ID!, depart: String!, arrivee: String!): Trajet!
+  addLivraison(commandeId: ID!, trajetId: ID!, dockerId: ID, dateEstimee: String): Livraison!
 }
 
 input ProduitInCommandeInput {
@@ -61,9 +63,44 @@ type Port {
   lat: Float
   lng: Float
 }
+type Route {
+  from: String!
+  to: String!
+  km: Float!
+}
+
+type Trajet {
+  id: ID!
+  hydravionId: ID!
+  depart: String!
+  arrivee: String!
+  distanceKm: Float
+  dureeMinutes: Float
+}
+
+type Livraison {
+  id: ID!
+  commande: Commande!
+  trajet: Trajet!
+  docker: Docker
+  statut: String
+  dateEstimee: String
+}
+type Docker {
+  id: ID!
+  name: String!
+  disponible: Boolean!
+}
 
 extend type Query {
   hydravions: [Hydravion!]!
   ports: [Port!]!
+  routes: [Route!]!
+  trajets: [Trajet!]!
+  livraisons: [Livraison!]!   
+  dockers: [Docker!]!
 }
 `;
+
+
+

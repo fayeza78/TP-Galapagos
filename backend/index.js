@@ -4,11 +4,13 @@ import { getSession } from "./neo4j.js";
 import { typeDefs } from "./typeDefs.js";
 import { resolvers } from "./resolvers.js";
 import { initNeo4jData } from "./neo4jData.js";
+import { Neo4jRoutes } from "./neo4jRoutes.js";
 
 async function startServer() {
     try {
         await connectMongo();
         await initNeo4jData();
+        await Neo4jRoutes();
 
 
         const server = new ApolloServer({ typeDefs, resolvers });
