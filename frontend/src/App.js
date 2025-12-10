@@ -99,7 +99,7 @@ const GET_SHORTEST_PATH = gql`
   query GetPath($depart: String!, $arrivee: String!) {
     routeOptimale(port_depart: $depart, port_arrivee: $arrivee) {
       distance_totale
-      duree_totale
+      temps_total_estime
       ports
     }
   }
@@ -175,7 +175,7 @@ function Dashboard() {
   const totalLockers = data.lockers.length;
 
   const hydravionsDispo = data.hydravions.filter(
-    (h) => h.statut === 'disponible'
+    (h) => h.statut === 'entrepot' || h.statut === 'port'
   ).length;
 
   return (
@@ -418,7 +418,7 @@ function NewDelivery() {
               <h3>Trajet proposé</h3>
               <div className="path-metrics">
                 <div>{pathData.routeOptimale.distance_totale} km</div>
-                <div>{pathData.routeOptimale.duree_totale} min</div>
+                <div>{pathData.routeOptimale.temps_total_estime} min</div>
               </div>
               <ul className="steps-list">
                 {pathData.routeOptimale.ports.map((portName, i) => (
