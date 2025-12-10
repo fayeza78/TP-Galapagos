@@ -238,19 +238,20 @@ async def seed_data():
     # ========== Lockers ==========
     print(" Création des lockers ")
     ports_lockers = [
-        {"ile": "San Cristóbal", "port": "Puerto Baquerizo Moreno", "nombre": 50},
-        {"ile": "Santa Cruz", "port": "Puerto Ayora", "nombre": 80},
-        {"ile": "Isabela", "port": "Puerto Villamil", "nombre": 40},
-        {"ile": "Floreana", "port": "Puerto Velasco Ibarra", "nombre": 25},
-        {"ile": "San Cristóbal", "port": "Wreck Bay", "nombre": 20},
-        {"ile": "Santa Cruz", "port": "Academy Bay", "nombre": 30},
+        {"ile": "San Cristóbal", "port": "Puerto Baquerizo Moreno", "nombre": 25},
+        {"ile": "Santa Cruz", "port": "Puerto Ayora", "nombre": 40},
+        {"ile": "Isabela", "port": "Puerto Villamil", "nombre": 20},
+        {"ile": "Floreana", "port": "Puerto Velasco Ibarra", "nombre": 15},
+        {"ile": "San Cristóbal", "port": "Wreck Bay", "nombre": 10},
+        {"ile": "Santa Cruz", "port": "Academy Bay", "nombre": 15},
     ]
 
     lockers_data = []
+    num_global = 1
     for port_info in ports_lockers:
         for i in range(1, port_info["nombre"] + 1):
             locker = {
-                "numero": i,
+                "numero": num_global,
                 "ile": port_info["ile"],
                 "port": port_info["port"],
                 "taille_caisse": 1,
@@ -259,6 +260,7 @@ async def seed_data():
                 "date_remplissage": None
             }
             lockers_data.append(locker)
+            num_global= num_global+1
     await db.lockers.insert_many(lockers_data)
     print(f" {len(lockers_data)} lockers créés")
 
