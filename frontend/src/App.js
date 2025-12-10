@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Map from "./Map";
 import {
   ApolloClient,
   InMemoryCache,
@@ -603,6 +604,13 @@ function App() {
             >
               Lockers
             </li>
+
+            <li
+            onClick={() => setView('map')}
+            className={view === 'map' ? 'active' : ''}
+          >
+            Carte
+          </li>
           </ul>
         </nav>
 
@@ -611,6 +619,7 @@ function App() {
           {view === 'delivery' && <NewDelivery />}
           {view === 'clients' && <Client />}
           {view === 'lockers' && <Lockers />}
+          {view === 'map' && <Map />}
         </main>
       </div>
     </ApolloProvider>

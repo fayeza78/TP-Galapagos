@@ -124,6 +124,8 @@ type_defs = gql("""
         capacite_hydravions: Int!
         lockers_disponibles: Int
         lockers_occupes: Int
+        longitude: Float!
+        latitude: Float!
     }
 
     type Route {
@@ -216,6 +218,8 @@ type_defs = gql("""
         coordonnees: CoordonneesInput!
         nombre_lockers: Int!
         capacite_hydravions: Int!
+        longitude: Float!
+        latitude: Float!
     }
 
     # ========== Queries ==========

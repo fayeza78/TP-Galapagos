@@ -218,7 +218,7 @@ async def seed_data():
     ]
     result = await db.produits.insert_many(produits_data)
     produit_ids = result.inserted_ids
-    print(f"   ✅ {len(produit_ids)} produits créés")
+    print(f"    {len(produit_ids)} produits créés")
 
     # ========== Stocks ==========
     print(" Création des stocks ")
