@@ -12,7 +12,7 @@ import './App.css';
 
 // Config Apollo (backend en local)
 const client = new ApolloClient({
-  uri: 'http://localhost:4000',
+  uri: 'http://localhost:8000/graphql',
   cache: new InMemoryCache(),
 });
 
@@ -22,28 +22,27 @@ const GET_DASHBOARD = gql`
   query GetDashboard {
     hydravions {
       id
+      nom
       modele
       statut
-      consommation
-      portActuel {
-        nom
-        ile
-      }
+      consommation_carburant
+      port_actuel
+      carburant_actuel
+      capacite_caisses
     }
     ports {
-      id
       nom
       ile
-    }
-    dockers {
-      id
-      disponible
+      nombre_lockers
+      capacite_hydravions
     }
     lockers {
       id
-      isAvailable
-      capacity
-      location
+      numero
+      statut
+      port
+      ile
+      taille_caisse
     }
   }
 `;
@@ -52,21 +51,32 @@ const GET_FORM_DATA = gql`
   query GetFormData {
     clients {
       id
-      name
+      nom
+      prenom
+      email
+      role
+      organisation
+      ile_principale
     }
     produits {
       id
-      name
-      stock
+      nom
+      description
+      categorie
+      stock_disponible
+      poids
     }
     ports {
-      id
       nom
+      ile
+      capacite_hydravions
     }
     hydravions {
       id
+      nom
       modele
       statut
+      capacite_caisses
     }
   }
 `;
@@ -75,21 +85,22 @@ const GET_CLIENTS = gql`
   query GetClients {
     clients {
       id
-      name
-      type
+      nom
+      prenom
       email
+      role
+      organisation
+      ile_principale
     }
   }
 `;
 
 const GET_SHORTEST_PATH = gql`
-  query GetPath($depart: ID!, $arrivee: ID!) {
-    shortestPath(depart: $depart, arrivee: $arrivee) {
-      distanceKm
-      dureeMinutes
-      etapes {
-        nom
-      }
+  query GetPath($depart: String!, $arrivee: String!) {
+    routeOptimale(port_depart: $depart, port_arrivee: $arrivee) {
+      distance_totale
+      duree_totale
+      ports
     }
   }
 `;
@@ -98,42 +109,52 @@ const GET_LOCKERS = gql`
   query GetLockers {
     lockers {
       id
-      location
-      capacity
-      isAvailable
+      numero
+      statut
+      port
+      ile
+      taille_caisse
     }
   }
 `;
 
 const ADD_COMMANDE = gql`
-  mutation AddCommande($clientId: ID!, $products: [ProduitInCommandeInput!]!) {
-    addCommande(clientId: $clientId, products: $products) {
+  mutation CreerCommande(
+    $client_id: String!
+    $produits: [ProduitCommandeInput!]!
+    $port_destination: String!
+    $priorite: Int
+  ) {
+    creerCommande(
+      input: {
+        client_id: $client_id
+        produits: $produits
+        port_destination: $port_destination
+        priorite: $priorite
+      }
+    ) {
       id
+      statut
+      nombre_caisses_requises
     }
   }
 `;
 
 const ADD_LIVRAISON = gql`
-  mutation AddLivraison(
-    $commandeId: ID!
-    $hydravionId: ID!
-    $depart: String!
-    $arrivee: String!
-    $dateEstimee: String
+  mutation CreerLivraison(
+    $commande_id: String!
+    $hydravion_id: String!
+    $itineraire: [String!]!
   ) {
-    addLivraison(
-      commandeId: $commandeId
-      hydravionId: $hydravionId
-      depart: $depart
-      arrivee: $arrivee
-      dateEstimee: $dateEstimee
+    creerLivraison(
+      commande_id: $commande_id
+      hydravion_id: $hydravion_id
+      itineraire: $itineraire
     ) {
       id
       statut
-      trajet {
-        distanceKm
-        dureeMinutes
-      }
+      distance_totale
+      consommation_estimee
     }
   }
 `;
@@ -150,23 +171,20 @@ function Dashboard() {
     return <p>Erreur : {error.message}</p>;
   }
 
-  const dockersDispo = data.dockers.filter((d) => d.disponible).length;
-  const totalDockers = data.dockers.length;
-
-  const lockersDispo = data.lockers.filter((l) => l.isAvailable).length;
+  const lockersDispo = data.lockers.filter((l) => l.statut === 'vide').length;
   const totalLockers = data.lockers.length;
+
+  const hydravionsDispo = data.hydravions.filter(
+    (h) => h.statut === 'disponible'
+  ).length;
 
   return (
     <div className="dashboard">
       <div className="stats-bar">
         <div className="stat-card">
           <h3>Flotte</h3>
-          <p>{data.hydravions.length} avions</p>
-        </div>
-        <div className="stat-card">
-          <h3>Dockers dispo</h3>
           <p>
-            {dockersDispo} / {totalDockers}
+            {hydravionsDispo} / {data.hydravions.length} disponibles
           </p>
         </div>
         <div className="stat-card">
@@ -177,7 +195,14 @@ function Dashboard() {
         </div>
         <div className="stat-card">
           <h3>Ports desservis</h3>
-          <p>{data.ports.length} îles</p>
+          <p>{data.ports.length} ports</p>
+        </div>
+        <div className="stat-card">
+          <h3>Capacité totale</h3>
+          <p>
+            {data.hydravions.reduce((sum, h) => sum + h.capacite_caisses, 0)}{' '}
+            caisses
+          </p>
         </div>
       </div>
 
@@ -186,24 +211,33 @@ function Dashboard() {
         {data.hydravions.map((h) => (
           <div
             key={h.id}
-            className={`card ${h.statut === 'En Vol' ? 'flying' : 'parked'}`}
+            className={`card ${h.statut === 'en_vol' ? 'flying' : 'parked'}`}
           >
             <div className="card-header">
               <span className="icon">
-                {h.statut === 'En Vol' ? '✈️' : '⚓'}
+                {h.statut === 'en_vol' ? '✈️' : '⚓'}
               </span>
-              <h4>{h.modele}</h4>
+              <h4>{h.nom || h.modele}</h4>
             </div>
             <div className="card-body">
+              <p>
+                <strong>Modèle :</strong> {h.modele}
+              </p>
               <p>
                 <strong>Statut :</strong> {h.statut}
               </p>
               <p>
                 <strong>Position :</strong>{' '}
-                {h.portActuel ? h.portActuel.nom : 'Maintenance'}
+                {h.port_actuel || 'En maintenance'}
               </p>
               <p>
-                <strong>Conso :</strong> {h.consommation} L/100km
+                <strong>Capacité :</strong> {h.capacite_caisses} caisses
+              </p>
+              <p>
+                <strong>Conso :</strong> {h.consommation_carburant} L/100km
+              </p>
+              <p>
+                <strong>Carburant :</strong> {h.carburant_actuel}%
               </p>
             </div>
           </div>
@@ -244,32 +278,37 @@ function NewDelivery() {
     try {
       const cmdRes = await createCommande({
         variables: {
-          clientId: form.clientId,
-          products: [
+          client_id: form.clientId,
+          produits: [
             {
-              productId: form.productId,
-              quantity: parseInt(form.quantity, 10),
+              produit_id: form.productId,
+              quantite: parseInt(form.quantity, 10),
             },
           ],
+          port_destination: form.arrivee,
+          priorite: 3,
         },
       });
 
-      const commandeId = cmdRes.data.addCommande.id;
+      const commandeId = cmdRes.data.creerCommande.id;
+
+      const itineraire = pathData?.routeOptimale?.ports || [
+        form.depart,
+        form.arrivee,
+      ];
 
       await createLivraison({
         variables: {
-          commandeId,
-          hydravionId: form.hydravionId,
-          depart: form.depart,
-          arrivee: form.arrivee,
-          dateEstimee: new Date().toISOString(),
+          commande_id: commandeId,
+          hydravion_id: form.hydravionId,
+          itineraire: itineraire,
         },
       });
 
       setSuccessMsg('Livraison planifiée avec succès.');
     } catch (err) {
       console.error(err);
-      alert('Erreur pendant la création de la livraison');
+      alert('Erreur pendant la création de la livraison: ' + err.message);
     }
   };
 
@@ -291,7 +330,7 @@ function NewDelivery() {
             <option value="">-- Choisir --</option>
             {formData.clients.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {c.prenom} {c.nom} - {c.role}
               </option>
             ))}
           </select>
@@ -304,7 +343,7 @@ function NewDelivery() {
             <option value="">-- Choisir --</option>
             {formData.produits.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} (Stock : {p.stock})
+                {p.nom} (Stock : {p.stock_disponible})
               </option>
             ))}
           </select>
@@ -326,10 +365,10 @@ function NewDelivery() {
           >
             <option value="">-- Choisir --</option>
             {formData.hydravions
-              .filter((h) => h.statut !== 'En Vol')
+              .filter((h) => h.statut !== 'en_vol' && h.statut !== 'en_maintenance')
               .map((h) => (
                 <option key={h.id} value={h.id}>
-                  {h.modele}
+                  {h.nom} ({h.modele}) - {h.capacite_caisses} caisses
                 </option>
               ))}
           </select>
@@ -342,9 +381,9 @@ function NewDelivery() {
                 onChange={(e) => setForm({ ...form, depart: e.target.value })}
               >
                 <option value="">-- Port --</option>
-                {formData.ports.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nom}
+                {formData.ports.map((p, i) => (
+                  <option key={i} value={p.nom}>
+                    {p.nom} ({p.ile})
                   </option>
                 ))}
               </select>
@@ -357,9 +396,9 @@ function NewDelivery() {
                 onChange={(e) => setForm({ ...form, arrivee: e.target.value })}
               >
                 <option value="">-- Port --</option>
-                {formData.ports.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nom}
+                {formData.ports.map((p, i) => (
+                  <option key={i} value={p.nom}>
+                    {p.nom} ({p.ile})
                   </option>
                 ))}
               </select>
@@ -374,16 +413,16 @@ function NewDelivery() {
         <div className="result-section">
           {pathLoading && <p>Calcul du trajet...</p>}
 
-          {pathData && pathData.shortestPath && (
+          {pathData && pathData.routeOptimale && (
             <div className="path-card">
               <h3>Trajet proposé</h3>
               <div className="path-metrics">
-                <div>{pathData.shortestPath.distanceKm} km</div>
-                <div>{pathData.shortestPath.dureeMinutes} min</div>
+                <div>{pathData.routeOptimale.distance_totale} km</div>
+                <div>{pathData.routeOptimale.duree_totale} min</div>
               </div>
               <ul className="steps-list">
-                {pathData.shortestPath.etapes.map((e, i) => (
-                  <li key={i}>{e.nom}</li>
+                {pathData.routeOptimale.ports.map((portName, i) => (
+                  <li key={i}>{portName}</li>
                 ))}
               </ul>
 
@@ -412,25 +451,47 @@ function Lockers() {
   }
 
   const lockers = data ? data.lockers : [];
+  const lockersByPort = {};
+
+  lockers.forEach((l) => {
+    if (!lockersByPort[l.port]) {
+      lockersByPort[l.port] = [];
+    }
+    lockersByPort[l.port].push(l);
+  });
 
   return (
     <div className="lockers-page">
       <h2>Lockers</h2>
-      <p>Disponibilité des différents lockers.</p>
+      <p>Disponibilité des différents lockers par port.</p>
 
-      <div className="lockers-list">
-        {lockers.map((l) => (
-          <div
-            key={l.id}
-            className={'locker-card' + (l.isAvailable ? ' available' : ' busy')}
-          >
-            <h3>Locker #{l.id}</h3>
-            <p>Lieu : {l.location}</p>
-            <p>Capacité : {l.capacity}</p>
-            <p>Statut : {l.isAvailable ? 'Disponible' : 'Occupé'}</p>
+      {Object.entries(lockersByPort).map(([port, portLockers]) => (
+        <div key={port} style={{ marginBottom: '30px' }}>
+          <h3>{port}</h3>
+          <div className="lockers-list">
+            {portLockers.map((l) => (
+              <div
+                key={l.id}
+                className={'locker-card' + (l.statut === 'vide' ? ' available' : ' busy')}
+              >
+                <h4>Locker #{l.numero}</h4>
+                <p>Île : {l.ile}</p>
+                <p>Taille : {l.taille_caisse}</p>
+                <p>
+                  Statut :{' '}
+                  {l.statut === 'vide'
+                    ? 'Disponible'
+                    : l.statut === 'plein'
+                    ? 'Occupé'
+                    : 'Réservé'}
+                </p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
+
+      {lockers.length === 0 && <p>Aucun locker trouvé.</p>}
     </div>
   );
 }
@@ -465,8 +526,10 @@ function Client() {
               }
               onClick={() => setSelectedClientId(c.id)}
             >
-              <h3>{c.name}</h3>
-              <p>ID : {c.id}</p>
+              <h3>
+                {c.prenom} {c.nom}
+              </h3>
+              <p>{c.role}</p>
             </div>
           ))}
 
@@ -480,10 +543,21 @@ function Client() {
 
           {selectedClient && (
             <>
-              <h3>{selectedClient.name}</h3>
-              <p>ID : {selectedClient.id}</p>
-              <p>Métier : {selectedClient.type}</p>
-              <p>Email : {selectedClient.email}</p>
+              <h3>
+                {selectedClient.prenom} {selectedClient.nom}
+              </h3>
+              <p>
+                <strong>Email :</strong> {selectedClient.email}
+              </p>
+              <p>
+                <strong>Rôle :</strong> {selectedClient.role}
+              </p>
+              <p>
+                <strong>Organisation :</strong> {selectedClient.organisation}
+              </p>
+              <p>
+                <strong>Île principale :</strong> {selectedClient.ile_principale}
+              </p>
             </>
           )}
         </div>
